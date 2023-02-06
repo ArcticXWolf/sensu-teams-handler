@@ -131,7 +131,7 @@
         "ttl": 0,
         "timeout": 0,
         "issued": 1544493319,
-        "output": "example output",
+        "output": "example output\n multiline\nYEAAHH",
         "state": "failing",
         "status": 1,
         "total_state_change": 0,

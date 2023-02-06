@@ -137,8 +137,11 @@ func generateMessageActions(event *types.Event) []*messagecard.PotentialAction {
 			PotentialActionActionCard: messagecard.PotentialActionActionCard{
 				Inputs: []messagecard.PotentialActionActionCardInput{
 					{
-						ID:    "check-output",
-						Type:  "TextInput",
+						ID:   "check-output",
+						Type: "TextInput",
+						PotentialActionActionCardInputTextInput: messagecard.PotentialActionActionCardInputTextInput{
+							IsMultiline: true,
+						},
 						Title: "Check Output",
 						Value: event.Check.GetOutput(),
 					},
@@ -218,7 +221,7 @@ func executeFunction(event *types.Event) error {
 	err = client.Send(plugin.teamsWebhook, message)
 	if err != nil {
 		message.Prepare()
-		return fmt.Errorf("could not send Teams message %s because of error %s", message.PrettyPrint(), err)
+		return fmt.Errorf("could not send Teams message because of error %s \n message: %s", err, message.PrettyPrint())
 	}
 	return nil
 }
