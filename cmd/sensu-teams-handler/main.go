@@ -150,6 +150,18 @@ func generateMessageActions(event *types.Event) []*messagecard.PotentialAction {
 		},
 		{
 			Type: "OpenUri",
+			Name: "Open Event in Sensu",
+			PotentialActionOpenURI: messagecard.PotentialActionOpenURI{
+				Targets: []messagecard.PotentialActionOpenURITarget{
+					{
+						OS:  "default",
+						URI: fmt.Sprintf("%s/c/~/n/%s/events/%s/%s", plugin.sensuUrl, event.Entity.Namespace, event.Entity.Name, event.Check.GetName()),
+					},
+				},
+			},
+		},
+		{
+			Type: "OpenUri",
 			Name: "Open Sensu",
 			PotentialActionOpenURI: messagecard.PotentialActionOpenURI{
 				Targets: []messagecard.PotentialActionOpenURITarget{
