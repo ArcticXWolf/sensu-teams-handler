@@ -69,7 +69,7 @@ func validateFunction(event *types.Event) error {
 func generateMessageCard(event *types.Event) (*messagecard.MessageCard, error) {
 	message := messagecard.NewMessageCard()
 	message.Title = generateMessageTitle(event)
-	message.Summary = generateMessageSummary(event)
+	message.Summary = generateMessageTitle(event)
 	message.ThemeColor = messageColorFromEventStatus(event.Check.GetStatus())
 	for _, section := range generateMessageSections(event) {
 		err := message.AddSection(section)
@@ -89,10 +89,6 @@ func generateMessageCard(event *types.Event) (*messagecard.MessageCard, error) {
 
 func generateMessageTitle(event *types.Event) string {
 	return fmt.Sprintf("%s: %s - %s", eventStatusString(event.Check.GetStatus()), event.Entity.Name, event.Check.GetName())
-}
-
-func generateMessageSummary(event *types.Event) string {
-	return fmt.Sprintf("Entity %s changed status, triggering check is %s", event.Entity.Name, event.Check.GetName())
 }
 
 func generateMessageSections(event *types.Event) []*messagecard.Section {
