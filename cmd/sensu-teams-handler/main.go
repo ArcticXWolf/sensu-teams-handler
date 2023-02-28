@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	goteamsnotify "github.com/atc0005/go-teams-notify/v2"
@@ -16,6 +17,11 @@ type Config struct {
 	teamsWebhook string
 	sensuUrl     string
 }
+
+const (
+	maxOutputLength        = 500
+	maxOutputLengthMessage = "Output truncated because it was too long, check Event log in sensu: \n"
+)
 
 var (
 	plugin = Config{
@@ -143,7 +149,7 @@ func generateMessageActions(event *types.Event) []*messagecard.PotentialAction {
 							IsMultiline: true,
 						},
 						Title: "Check Output",
-						Value: event.Check.GetOutput(),
+						Value: eventOutputTruncated(event),
 					},
 				},
 			},
@@ -222,6 +228,14 @@ func eventHistoryString(event *types.Event) string {
 	return history
 }
 
+func eventOutputTruncated(event *types.Event) string {
+	output := strings.TrimSpace(event.Check.Output)
+	if len(output) > maxOutputLength {
+		output = fmt.Sprintf("%s%s\n[...]", maxOutputLengthMessage, output[:maxOutputLength-len(maxOutputLengthMessage)])
+	}
+	return output
+}
+
 func executeFunction(event *types.Event) error {
 	client := goteamsnotify.NewTeamsClient()
 
@@ -233,7 +247,8 @@ func executeFunction(event *types.Event) error {
 	err = client.Send(plugin.teamsWebhook, message)
 	if err != nil {
 		message.Prepare()
-		return fmt.Errorf("could not send Teams message because of error %s \n message: %s", err, message.PrettyPrint())
+		messageStr := message.PrettyPrint()
+		return fmt.Errorf("could not send Teams message because of error %s \n message (len %d): %s", err, len(messageStr), messageStr)
 	}
 	return nil
 }
