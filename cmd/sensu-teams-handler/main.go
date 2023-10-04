@@ -151,6 +151,23 @@ func generateMessageActions(event *types.Event) []*messagecard.PotentialAction {
 			},
 		},
 		{
+			Type: "ActionCard",
+			Name: "Show event annotations",
+			PotentialActionActionCard: messagecard.PotentialActionActionCard{
+				Inputs: []messagecard.PotentialActionActionCardInput{
+					{
+						ID:   "event-annotations",
+						Type: "TextInput",
+						PotentialActionActionCardInputTextInput: messagecard.PotentialActionActionCardInputTextInput{
+							IsMultiline: true,
+						},
+						Title: "Event annotations",
+						Value: eventAnnotationsTruncated(event),
+					},
+				},
+			},
+		},
+		{
 			Type: "OpenUri",
 			Name: "Open Event in Sensu",
 			PotentialActionOpenURI: messagecard.PotentialActionOpenURI{
@@ -158,18 +175,6 @@ func generateMessageActions(event *types.Event) []*messagecard.PotentialAction {
 					{
 						OS:  "default",
 						URI: fmt.Sprintf("%s/c/~/n/%s/events/%s/%s", plugin.sensuUrl, event.Entity.Namespace, event.Entity.Name, event.Check.GetName()),
-					},
-				},
-			},
-		},
-		{
-			Type: "OpenUri",
-			Name: "Open Sensu",
-			PotentialActionOpenURI: messagecard.PotentialActionOpenURI{
-				Targets: []messagecard.PotentialActionOpenURITarget{
-					{
-						OS:  "default",
-						URI: plugin.sensuUrl,
 					},
 				},
 			},
@@ -226,6 +231,17 @@ func eventHistoryString(event *types.Event) string {
 
 func eventOutputTruncated(event *types.Event) string {
 	output := strings.TrimSpace(event.Check.Output)
+	if len(output) > maxOutputLength {
+		output = fmt.Sprintf("%s%s\n[...]", maxOutputLengthMessage, output[:maxOutputLength-len(maxOutputLengthMessage)])
+	}
+	return output
+}
+
+func eventAnnotationsTruncated(event *types.Event) string {
+	output := ""
+	for key, value := range event.GetObjectMeta().Annotations {
+		output = fmt.Sprintf("%s%s\n%s\n\n", output, key, value)
+	}
 	if len(output) > maxOutputLength {
 		output = fmt.Sprintf("%s%s\n[...]", maxOutputLengthMessage, output[:maxOutputLength-len(maxOutputLengthMessage)])
 	}

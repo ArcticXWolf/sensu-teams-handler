@@ -1,6 +1,13 @@
 {
     "id": "e60d1549-bd57-4281-8273-1a04409aa9fa",
     "timestamp": 1550816106,
+    "metadata": {
+        "namespace": "default",
+        "annotations": {
+            "sensu.io/notifications/critical": "The value of testmetric exceeded the configured threshold (max: 0, actual: 1).",
+            "sensu.io/output_metric_thresholds/testmetric/max/critical": "The value of testmetric exceeded the configured threshold (max: 0, actual: 1)."
+        }
+    },
     "entity": {
         "entity_class": "agent",
         "system": {

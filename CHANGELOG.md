@@ -7,6 +7,11 @@ Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+## [0.0.6] - 2023-10-04
+
+### Added
+- Show sensu event annotations in teams message
+
 ## [0.0.5] - 2022-10-12
 
 ### Added
