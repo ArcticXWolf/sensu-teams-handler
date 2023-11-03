@@ -148,6 +148,20 @@ func generateMessageActions(event *types.Event) []*messagecard.PotentialAction {
 						Value: eventOutputTruncated(event),
 					},
 				},
+				Actions: []messagecard.PotentialActionActionCardAction{
+					{
+						Type: "OpenUri",
+						Name: "Open Event in Sensu",
+						PotentialActionOpenURI: messagecard.PotentialActionOpenURI{
+							Targets: []messagecard.PotentialActionOpenURITarget{
+								{
+									OS:  "default",
+									URI: fmt.Sprintf("%s/c/~/n/%s/events/%s/%s", plugin.sensuUrl, event.Entity.Namespace, event.Entity.Name, event.Check.GetName()),
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 		{
@@ -163,6 +177,20 @@ func generateMessageActions(event *types.Event) []*messagecard.PotentialAction {
 						},
 						Title: "Event annotations",
 						Value: eventAnnotationsTruncated(event),
+					},
+				},
+				Actions: []messagecard.PotentialActionActionCardAction{
+					{
+						Type: "OpenUri",
+						Name: "Open Event in Sensu",
+						PotentialActionOpenURI: messagecard.PotentialActionOpenURI{
+							Targets: []messagecard.PotentialActionOpenURITarget{
+								{
+									OS:  "default",
+									URI: fmt.Sprintf("%s/c/~/n/%s/events/%s/%s", plugin.sensuUrl, event.Entity.Namespace, event.Entity.Name, event.Check.GetName()),
+								},
+							},
+						},
 					},
 				},
 			},

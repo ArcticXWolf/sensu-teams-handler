@@ -1,0 +1,21 @@
+{
+    "@type": "MessageCard",
+    "@context": "https://schema.org/extensions",
+    "summary": "Warning: webserver01 - check-nginx",
+    "title": "Warning: webserver01 - check-nginx",
+    "themeColor": "FFFF00",
+    "potentialAction": [
+        {
+            "@type": "ActionCard",
+            "name": "Show check output",
+            "inputs": [
+                {
+                    "@type": "TextInput",
+                    "id": "check-output",
+                    "title": "Check Output"
+                }
+            ],
+            "actions": []
+        }
+    ]
+}
