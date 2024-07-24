@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
 	goteamsnotify "github.com/atc0005/go-teams-notify/v2"
-	messagecard "github.com/atc0005/go-teams-notify/v2/messagecard"
+	adaptivecard "github.com/atc0005/go-teams-notify/v2/adaptivecard"
 	"github.com/sensu/sensu-go/types"
 	"github.com/sensu/sensu-plugin-sdk/sensu"
 )
@@ -66,148 +67,119 @@ func validateFunction(event *types.Event) error {
 	return nil
 }
 
-func generateMessageCard(event *types.Event) (*messagecard.MessageCard, error) {
-	message := messagecard.NewMessageCard()
-	message.Title = generateMessageTitle(event)
-	message.Summary = generateMessageTitle(event)
-	message.ThemeColor = messageColorFromEventStatus(event.Check.GetStatus())
-	for _, section := range generateMessageSections(event) {
-		err := message.AddSection(section)
-		if err != nil {
-			return nil, fmt.Errorf("error during section add: %s", err)
-		}
-	}
-	for _, action := range generateMessageActions(event) {
-		err := message.AddPotentialAction(action)
-		if err != nil {
-			return nil, fmt.Errorf("error during potential action add: %s", err)
-		}
-	}
+func generateAdaptiveCard(event *types.Event) (adaptivecard.Card, error) {
+	card := adaptivecard.NewCard()
+	card.AddElement(false, *generateCardTitle(event))
+	card.AddElement(false, *generateCardFacts(event))
+	card.Actions = append(card.Actions, generateCardActions(event)...)
+	card.MSTeams.Width = "full"
 
-	return message, nil
+	// Sadly the teams mentioning feature seems broken at the moment, so we disable it
+	// card.AddElement(false, *generateCardMentionString(event))
+	// card.MSTeams.Entities = append(card.MSTeams.Entities, generateCardMentions(event)...)
+
+	return card, nil
 }
 
-func generateMessageTitle(event *types.Event) string {
-	return fmt.Sprintf("%s: %s - %s", eventStatusString(event.Check.GetStatus()), event.Entity.Name, event.Check.GetName())
+func generateCardTitle(event *types.Event) *adaptivecard.Element {
+	title := fmt.Sprintf("%c %s: %s - %s", eventStatusIcon(event.Check.GetStatus()), eventStatusString(event.Check.GetStatus()), event.Entity.Name, event.Check.GetName())
+	textblock := adaptivecard.NewTitleTextBlock(title, false)
+	textblock.Size = "extraLarge"
+	return &textblock
 }
 
-func generateMessageSections(event *types.Event) []*messagecard.Section {
-	return []*messagecard.Section{
-		{
-			ActivityTitle: "Check history",
-			ActivityText:  eventHistoryString(event),
-			ActivityImage: eventStatusImageURL(event.Check.GetStatus()),
-			Markdown:      true,
-		},
-		{
-			StartGroup: true,
-			Facts: []messagecard.SectionFact{
-				{
-					Name:  "Namespace",
-					Value: event.Entity.Namespace,
-				},
-				{
-					Name:  "Entity",
-					Value: event.Entity.Name,
-				},
-				{
-					Name:  "Check",
-					Value: event.Check.Name,
-				},
-				{
-					Name:  "Status",
-					Value: eventStatusString(event.Check.GetStatus()),
-				},
-				{
-					Name:  "Last Ok",
-					Value: time.Unix(event.Check.LastOK, 0).Local().String(),
-				},
-				{
-					Name:  "Event created",
-					Value: time.Unix(event.Check.Issued, 0).Local().String(),
-				},
-			},
-		},
-	}
+func generateCardFacts(event *types.Event) *adaptivecard.Element {
+	facts := adaptivecard.NewFactSet()
+	facts.AddFact(adaptivecard.Fact{
+		Title: "History (past \U00002192 now)",
+		Value: eventStatusHistory(event),
+	})
+	facts.AddFact(adaptivecard.Fact{
+		Title: "Namespace",
+		Value: event.Entity.Namespace,
+	})
+	facts.AddFact(adaptivecard.Fact{
+		Title: "Entity",
+		Value: event.Entity.Name,
+	})
+	facts.AddFact(adaptivecard.Fact{
+		Title: "Check",
+		Value: event.Check.Name,
+	})
+	facts.AddFact(adaptivecard.Fact{
+		Title: "Status",
+		Value: eventStatusString(event.Check.GetStatus()),
+	})
+	facts.AddFact(adaptivecard.Fact{
+		Title: "Last Ok",
+		Value: time.Unix(event.Check.LastOK, 0).Local().String(),
+	})
+	facts.AddFact(adaptivecard.Fact{
+		Title: "Event created",
+		Value: time.Unix(event.Check.Issued, 0).Local().String(),
+	})
+	facts.IsSubtle = true
+	element := adaptivecard.Element(facts)
+	return &element
 }
 
-func generateMessageActions(event *types.Event) []*messagecard.PotentialAction {
-	return []*messagecard.PotentialAction{
+func generateCardActions(event *types.Event) []adaptivecard.Action {
+	actions := []adaptivecard.Action{
 		{
-			Type: "ActionCard",
-			Name: "Show check output",
-			PotentialActionActionCard: messagecard.PotentialActionActionCard{
-				Inputs: []messagecard.PotentialActionActionCardInput{
-					{
-						ID:   "check-output",
-						Type: "TextInput",
-						PotentialActionActionCardInputTextInput: messagecard.PotentialActionActionCardInputTextInput{
-							IsMultiline: true,
-						},
-						Title: "Check Output",
-						Value: eventOutputTruncated(event),
-					},
-				},
-				Actions: []messagecard.PotentialActionActionCardAction{
-					{
-						Type: "OpenUri",
-						Name: "Open Event in Sensu",
-						PotentialActionOpenURI: messagecard.PotentialActionOpenURI{
-							Targets: []messagecard.PotentialActionOpenURITarget{
-								{
-									OS:  "default",
-									URI: fmt.Sprintf("%s/c/~/n/%s/events/%s/%s", plugin.sensuUrl, event.Entity.Namespace, event.Entity.Name, event.Check.GetName()),
-								},
-							},
-						},
-					},
-				},
-			},
+			Type:  adaptivecard.TypeActionShowCard,
+			Title: "Show check output",
+			Card:  generateCardEventOutput(event),
 		},
 		{
-			Type: "ActionCard",
-			Name: "Show event annotations",
-			PotentialActionActionCard: messagecard.PotentialActionActionCard{
-				Inputs: []messagecard.PotentialActionActionCardInput{
-					{
-						ID:   "event-annotations",
-						Type: "TextInput",
-						PotentialActionActionCardInputTextInput: messagecard.PotentialActionActionCardInputTextInput{
-							IsMultiline: true,
-						},
-						Title: "Event annotations",
-						Value: eventAnnotationsTruncated(event),
-					},
-				},
-				Actions: []messagecard.PotentialActionActionCardAction{
-					{
-						Type: "OpenUri",
-						Name: "Open Event in Sensu",
-						PotentialActionOpenURI: messagecard.PotentialActionOpenURI{
-							Targets: []messagecard.PotentialActionOpenURITarget{
-								{
-									OS:  "default",
-									URI: fmt.Sprintf("%s/c/~/n/%s/events/%s/%s", plugin.sensuUrl, event.Entity.Namespace, event.Entity.Name, event.Check.GetName()),
-								},
-							},
-						},
-					},
-				},
-			},
+			Type:  adaptivecard.TypeActionShowCard,
+			Title: "Show event annotations",
+			Card:  generateCardEventAnnotations(event),
 		},
 		{
-			Type: "OpenUri",
-			Name: "Open Event in Sensu",
-			PotentialActionOpenURI: messagecard.PotentialActionOpenURI{
-				Targets: []messagecard.PotentialActionOpenURITarget{
-					{
-						OS:  "default",
-						URI: fmt.Sprintf("%s/c/~/n/%s/events/%s/%s", plugin.sensuUrl, event.Entity.Namespace, event.Entity.Name, event.Check.GetName()),
-					},
-				},
-			},
+			Type:  adaptivecard.TypeActionOpenURL,
+			Title: "Open in Sensu",
+			URL:   eventSensuUrl(event),
 		},
 	}
+	return actions
+}
+
+func generateCardEventOutput(event *types.Event) *adaptivecard.Card {
+	card := adaptivecard.NewCard()
+	card.AddElement(false, adaptivecard.NewTextBlock(eventOutputTruncated(event), false))
+	return &card
+}
+
+func generateCardEventAnnotations(event *types.Event) *adaptivecard.Card {
+	card := adaptivecard.NewCard()
+	card.AddElement(false, adaptivecard.NewTextBlock(eventAnnotationsTruncated(event), false))
+	return &card
+}
+
+func generateCardMentions(event *types.Event) adaptivecard.Mentions {
+	// TODO: Load the users from event annotations
+	users := []string{}
+	mentions := adaptivecard.Mentions{}
+	for _, user := range users {
+		mentions = append(mentions, adaptivecard.Mention{
+			Type: adaptivecard.TypeMention,
+			Text: fmt.Sprintf("<at>%s</at>", user),
+			Mentioned: adaptivecard.Mentioned{
+				ID:   user,
+				Name: user,
+			},
+		})
+	}
+	return mentions
+}
+
+func generateCardMentionString(event *types.Event) *adaptivecard.Element {
+	mentionstring := "The following users are mentioned: "
+	for _, mention := range generateCardMentions(event) {
+		mentionstring = fmt.Sprintf("%s%s ", mentionstring, mention.Text)
+	}
+	textblock := adaptivecard.NewTextBlock(mentionstring, false)
+	return &textblock
 }
 
 func eventStatusString(status uint32) string {
@@ -223,42 +195,30 @@ func eventStatusString(status uint32) string {
 	}
 }
 
-func messageColorFromEventStatus(status uint32) string {
+func eventStatusIcon(status uint32) rune {
 	switch status {
 	case 0:
-		return "00FF00"
+		return '\U00002705'
 	case 1:
-		return "FFFF00"
+		return '\U000026A0'
 	case 2:
-		return "FF0000"
+		return '\U0000274C'
 	default:
-		return "FFFF00"
+		return '\U000026A0'
 	}
 }
 
-func eventStatusImageURL(status uint32) string {
-	switch status {
-	case 0:
-		return "https://iconmonstr.com/wp-content/g/gd/png.php?size=240&padding=0&icon=releases/source/7.2.0/png/iconmonstr-check-mark-circle-filled.png&in=iconmonstr-check-mark-circle-filled.png&bgShape=&bgColorR=200&bgColorG=200&bgColorB=200&iconColorR=0&iconColorG=255&iconColorB=0"
-	case 1:
-		return "https://iconmonstr.com/wp-content/g/gd/png.php?size=240&padding=0&icon=releases/source/7.0.0/png/iconmonstr-warning-filled.png&in=iconmonstr-warning-filled.png&bgShape=&bgColorR=200&bgColorG=200&bgColorB=200&iconColorR=255&iconColorG=255&iconColorB=0"
-	case 2:
-		return "https://iconmonstr.com/wp-content/g/gd/png.php?size=240&padding=0&icon=releases/source/7.2.0/png/iconmonstr-x-mark-circle-filled.png&in=iconmonstr-x-mark-circle-filled.png&bgShape=&bgColorR=200&bgColorG=200&bgColorB=200&iconColorR=255&iconColorG=0&iconColorB=0"
-	default:
-		return "https://iconmonstr.com/wp-content/g/gd/png.php?size=240&padding=0&icon=releases/source/2012/png/iconmonstr-help-2.png&in=iconmonstr-help-2.png&bgShape=&bgColorR=200&bgColorG=200&bgColorB=200&iconColorR=140&iconColorG=140&iconColorB=140"
-	}
-}
-
-func eventHistoryString(event *types.Event) string {
+func eventStatusHistory(event *types.Event) string {
 	history := ""
 	for _, item := range event.Check.History {
-		history = fmt.Sprintf("%s<div style=\"background-color: #%s; margin: 0px 2px; float:left; width: 10px; height: 10px;\">&nbsp;</div>", history, messageColorFromEventStatus(item.GetStatus()))
+		history = fmt.Sprintf("%s%c ", history, eventStatusIcon(item.GetStatus()))
 	}
 	return history
 }
 
 func eventOutputTruncated(event *types.Event) string {
 	output := strings.TrimSpace(event.Check.Output)
+	output = strings.ReplaceAll(output, "\n", "\n\n")
 	if len(output) > maxOutputLength {
 		output = fmt.Sprintf("%s%s\n[...]", maxOutputLengthMessage, output[:maxOutputLength-len(maxOutputLengthMessage)])
 	}
@@ -276,15 +236,27 @@ func eventAnnotationsTruncated(event *types.Event) string {
 	return output
 }
 
+func eventSensuUrl(event *types.Event) string {
+	return fmt.Sprintf("%s/c/~/n/%s/events/%s/%s", plugin.sensuUrl, event.Entity.Namespace, event.Entity.Name, event.Check.GetName())
+}
+
 func executeFunction(event *types.Event) error {
 	client := goteamsnotify.NewTeamsClient()
 
-	message, err := generateMessageCard(event)
+	card, err := generateAdaptiveCard(event)
 	if err != nil {
-		return fmt.Errorf("could not generate Teams message because of error %s", err)
+		return fmt.Errorf("could not generate Adaptive Card because of error %s", err)
 	}
 
-	err = client.Send(plugin.teamsWebhook, message)
+	message, err := adaptivecard.NewMessageFromCard(card)
+	if err != nil {
+		return fmt.Errorf("could not generate Teams message because of error %s \n card: %v", err, card)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = client.SendWithContext(ctx, plugin.teamsWebhook, message)
+
 	if err != nil {
 		message.Prepare()
 		messageStr := message.PrettyPrint()

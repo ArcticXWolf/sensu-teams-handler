@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	github.com/atc0005/go-teams-notify/v2 v2.7.0
+	github.com/atc0005/go-teams-notify/v2 v2.11.0-alpha.2
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/echlebek/timeproxy v1.0.0 // indirect

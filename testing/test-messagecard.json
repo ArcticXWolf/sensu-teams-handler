@@ -1,18 +1,34 @@
 {
     "@type": "MessageCard",
     "@context": "https://schema.org/extensions",
-    "summary": "Warning: webserver01 - check-nginx",
-    "title": "Warning: webserver01 - check-nginx",
+    "summary": "Test",
+    "title": "Test",
     "themeColor": "FFFF00",
     "potentialAction": [
         {
             "@type": "ActionCard",
-            "name": "Show check output",
+            "name": "Show",
             "inputs": [
                 {
                     "@type": "TextInput",
-                    "id": "check-output",
-                    "title": "Check Output"
+                    "id": "textinput",
+                    "title": "Textinput",
+                    "value": "This is the test of textarea 1.",
+                    "isMultiline": true
+                }
+            ],
+            "actions": []
+        },
+        {
+            "@type": "ActionCard",
+            "name": "Show2",
+            "inputs": [
+                {
+                    "@type": "TextInput",
+                    "id": "textinput2",
+                    "title": "Textinput2",
+                    "value": "This is the test of textarea 2.",
+                    "isMultiline": true
                 }
             ],
             "actions": []
