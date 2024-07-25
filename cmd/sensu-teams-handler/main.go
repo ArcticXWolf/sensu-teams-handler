@@ -15,8 +15,9 @@ import (
 // Config represents the check plugin config.
 type Config struct {
 	sensu.PluginConfig
-	teamsWebhook string
-	sensuUrl     string
+	teamsWebhook  string
+	teamsMentions string
+	sensuUrl      string
 }
 
 const (
@@ -52,6 +53,15 @@ var (
 			Default:   "http://localhost:3000",
 			Value:     &plugin.sensuUrl,
 		},
+		&sensu.PluginConfigOption[string]{
+			Path:      "mentions",
+			Env:       "TEAMS_MENTIONS",
+			Argument:  "mentions",
+			Shorthand: "m",
+			Secret:    true,
+			Usage:     "A space separated list of ms teams email addresses that should be mentioned in the notifications",
+			Value:     &plugin.teamsMentions,
+		},
 	}
 )
 
@@ -75,8 +85,10 @@ func generateAdaptiveCard(event *types.Event) (adaptivecard.Card, error) {
 	card.MSTeams.Width = "full"
 
 	// Sadly the teams mentioning feature seems broken at the moment, so we disable it
-	// card.AddElement(false, *generateCardMentionString(event))
-	// card.MSTeams.Entities = append(card.MSTeams.Entities, generateCardMentions(event)...)
+	mentions := generateCardMentions()
+	if len(mentions) > 0 {
+		card.MSTeams.Entities = append(card.MSTeams.Entities, mentions...)
+	}
 
 	return card, nil
 }
@@ -118,6 +130,16 @@ func generateCardFacts(event *types.Event) *adaptivecard.Element {
 		Title: "Event created",
 		Value: time.Unix(event.Check.Issued, 0).Local().String(),
 	})
+
+	// Mentions
+	mentions := generateCardMentionString()
+	if mentions != "" {
+		facts.AddFact(adaptivecard.Fact{
+			Title: "Mentioned",
+			Value: mentions,
+		})
+	}
+
 	facts.IsSubtle = true
 	element := adaptivecard.Element(facts)
 	return &element
@@ -156,9 +178,9 @@ func generateCardEventAnnotations(event *types.Event) *adaptivecard.Card {
 	return &card
 }
 
-func generateCardMentions(event *types.Event) adaptivecard.Mentions {
-	// TODO: Load the users from event annotations
-	users := []string{}
+func generateCardMentions() adaptivecard.Mentions {
+	users := strings.Fields(plugin.teamsMentions)
+
 	mentions := adaptivecard.Mentions{}
 	for _, user := range users {
 		mentions = append(mentions, adaptivecard.Mention{
@@ -173,13 +195,12 @@ func generateCardMentions(event *types.Event) adaptivecard.Mentions {
 	return mentions
 }
 
-func generateCardMentionString(event *types.Event) *adaptivecard.Element {
-	mentionstring := "The following users are mentioned: "
-	for _, mention := range generateCardMentions(event) {
-		mentionstring = fmt.Sprintf("%s%s ", mentionstring, mention.Text)
+func generateCardMentionString() string {
+	mentionstring := ""
+	for _, mention := range generateCardMentions() {
+		mentionstring = fmt.Sprintf("%s%s  ", mentionstring, mention.Text)
 	}
-	textblock := adaptivecard.NewTextBlock(mentionstring, false)
-	return &textblock
+	return strings.TrimSpace(mentionstring)
 }
 
 func eventStatusString(status uint32) string {

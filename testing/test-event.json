@@ -151,8 +151,9 @@
         "metadata": {
             "name": "check-nginx",
             "namespace": "default",
-            "labels": null,
+            "labels": {},
             "annotations": {
+                "sensu.io/plugins/sensu-teams-handler/config/mentions": "",
                 "sensu.io/plugins/segp/config/path1": "value-check1",
                 "sensu.io/plugins/segp/config/path2": "1357",
                 "sensu.io/plugins/segp/config/path3": "false"
