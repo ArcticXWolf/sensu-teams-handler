@@ -168,13 +168,13 @@ func generateCardActions(event *types.Event) []adaptivecard.Action {
 
 func generateCardEventOutput(event *types.Event) *adaptivecard.Card {
 	card := adaptivecard.NewCard()
-	card.AddElement(false, adaptivecard.NewTextBlock(eventOutputTruncated(event), false))
+	card.AddElement(false, adaptivecard.NewTextBlock(eventOutputTruncated(event), true))
 	return &card
 }
 
 func generateCardEventAnnotations(event *types.Event) *adaptivecard.Card {
 	card := adaptivecard.NewCard()
-	card.AddElement(false, adaptivecard.NewTextBlock(eventAnnotationsTruncated(event), false))
+	card.AddElement(false, adaptivecard.NewTextBlock(eventAnnotationsTruncated(event), true))
 	return &card
 }
 
