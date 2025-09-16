@@ -262,7 +262,8 @@ func eventSensuUrl(event *types.Event) string {
 }
 
 func executeFunction(event *types.Event) error {
-	client := goteamsnotify.NewTeamsClient()
+	validPattern := `^https:\/\/(?:.*)(:?\.azure-api|logic\.azure|api\.powerplatform)\.(?:com|net)`
+	client := goteamsnotify.NewTeamsClient().AddWebhookURLValidationPatterns(validPattern)
 
 	card, err := generateAdaptiveCard(event)
 	if err != nil {
